@@ -28,7 +28,6 @@
     "pdfkit": "^0.15.0",
     "python-shell": "^5.0.0",
     "websockets": "^0.2.0",
-    "kaggle-api": "^1.0.0",
     "stripe": "^15.0.0"
   },
   "keywords": [
