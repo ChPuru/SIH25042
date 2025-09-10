@@ -20,7 +20,7 @@ const io = socketIo(server, {
 });
 const PORT = process.env.PORT || 5001;
 
-const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/biomapper";
+const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI || "mongodb://localhost:27017/biomapper";
 mongoose.connect(MONGO_URI)
     .then(() => console.log("✅ MongoDB connected successfully."))
     .catch(err => console.error("❌ MongoDB connection error:", err));
@@ -28,7 +28,24 @@ mongoose.connect(MONGO_URI)
 // Add compression middleware for better performance
 app.use(compression());
 app.use(helmet());
-app.use(cors({ origin: ['http://localhost:3000'], credentials: false }));
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+
+    // Allow localhost for development
+    if (origin.includes('localhost')) return callback(null, true);
+
+    // Allow Railway domains
+    if (origin.includes('railway.app')) return callback(null, true);
+
+    // Allow your custom domain (replace with your actual domain)
+    if (origin.includes('your-domain.com')) return callback(null, true);
+
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: false
+}));
 app.use(rateLimit({ windowMs: 60 * 1000, max: 120 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -81,6 +98,26 @@ app.use('/api/climate-integration', climateIntegrationRoutes);
 app.use('/api/economic-modeling', economicModelingRoutes);
 app.use('/api/global-monitoring', globalMonitoringRoutes);
 app.use('/api/indian-species', indianSpeciesRoutes);
+
+// Health check endpoint for Railway deployment
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    message: 'BioMapper API is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    version: '1.0.0'
+  });
+});
+
+// Root health check (fallback)
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    message: 'BioMapper API is running',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
